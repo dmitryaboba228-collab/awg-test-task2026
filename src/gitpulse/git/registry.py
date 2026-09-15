@@ -14,7 +14,7 @@ from pathlib import Path
 from gitpulse.core.models import RepoInfo
 from gitpulse.git.clone import DEFAULT_MAX_CLONE_BYTES, clone
 from gitpulse.git.errors import GitPulseError
-from gitpulse.git.repository import GitRepository
+from gitpulse.git.repository import GitRepository, get_repository
 
 _SOURCE_MARKER = '.gitpulse-source'
 
@@ -54,7 +54,7 @@ class RepoRegistry:
         path = self._repos.get(repo_id)
         if path is None or not path.exists():
             raise UnknownRepoError(f'unknown repo: {repo_id}')
-        return GitRepository(path)
+        return get_repository(str(path))
 
     def list(self) -> list[RepoInfo]:
         return [self._info(repo_id, path) for repo_id, path in sorted(self._repos.items())]
