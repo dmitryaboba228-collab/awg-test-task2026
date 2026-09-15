@@ -1,0 +1,9 @@
+# Reverse proxy with automatic Let's Encrypt SSL.
+#
+# {$GITPULSE_DOMAIN} is the public hostname (e.g. a sslip.io address that
+# resolves to this server's own IP, or a real domain once one exists).
+# Caddy issues and renews the certificate for it automatically — no manual
+# certbot step needed.
+{$GITPULSE_DOMAIN} {
+	reverse_proxy gitpulse:8000
+}

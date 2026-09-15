@@ -86,6 +86,27 @@ any public `https://` URL at runtime — no restart, no fixed local checkout.
 `deploy/Dockerfile` installs a pre-built wheel; it does not build the
 package, mirroring `examples/host-vendor`.
 
+**With a public HTTPS endpoint** (the real deployment target — see
+[deploy/README.md](deploy/README.md) for the full runbook):
+
+```bash
+export GITPULSE_DOMAIN=<public hostname>   # e.g. a sslip.io address for
+                                            # the server's own IP if there
+                                            # is no owned domain yet
+deploy/run.sh
+```
+
+This brings up `gitpulse` behind `caddy` (`deploy/docker-compose.yml`),
+which terminates TLS with a certificate it obtains and renews itself and
+reverse-proxies everything else to the app — no manual certbot step.
+Verified locally end to end (build, both containers healthy, UI and API
+reachable through the proxy, HTTP redirected to HTTPS) using Caddy's
+internal certificate authority in place of a real one, since issuing a real
+Let's Encrypt certificate needs the domain to actually resolve to a
+publicly reachable server.
+
+**Single container, no TLS** (quick local/manual testing):
+
 ```bash
 make package                                          # dist/*.whl
 docker build -f deploy/Dockerfile -t gitpulse .
@@ -96,7 +117,7 @@ docker run -p 8000:8000 -v gitpulse-workspace:/data/workspace gitpulse
 
 `make package-verify` installs the wheel into an isolated venv and mounts it
 in both `repo_path` and `workspace` mode against a throwaway repo — run it
-before building the image.
+before building either image.
 
 Without Docker, `deploy/app.py` runs the same way as
 `examples/host-vendor/app.py`: `pip install dist/*.whl`, then
