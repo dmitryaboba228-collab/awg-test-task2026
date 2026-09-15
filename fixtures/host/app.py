@@ -8,13 +8,22 @@ from pathlib import Path
 from gitpulse.fastapi_app import create_app
 
 ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_REPO = Path(os.environ.get('GITPULSE_REPO_PATH', str(ROOT)))
+REPO_PATH_ENV = os.environ.get('GITPULSE_REPO_PATH')
+WORKSPACE_ENV = os.environ.get('GITPULSE_WORKSPACE')
 
 
 def build_host_app():
+    workspace_path = Path(WORKSPACE_ENV) if WORKSPACE_ENV else None
+    if REPO_PATH_ENV:
+        repo_path: Path | None = Path(REPO_PATH_ENV)
+    elif workspace_path is None:
+        repo_path = ROOT
+    else:
+        repo_path = None
     app = create_app(
         mount_path='/git',
-        repo_path=DEFAULT_REPO,
+        repo_path=repo_path,
+        workspace_path=workspace_path,
         mount_ui=True,
     )
 

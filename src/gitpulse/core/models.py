@@ -64,3 +64,12 @@ class ActivityBucket(BaseModel):
 
     period: str
     commits: int
+
+
+class RepoInfo(BaseModel):
+    """Repository registered in a workspace, identified by clone directory."""
+
+    id: str
+    url: str
+    path: str
+    cloned_at: datetime
