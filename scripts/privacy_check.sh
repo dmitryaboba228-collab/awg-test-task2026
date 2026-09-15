@@ -26,6 +26,11 @@ if [[ ${#patterns[@]} -eq 0 ]]; then
   exit 0
 fi
 
+if ! command -v rg >/dev/null 2>&1; then
+  echo "privacy-check: FAILED — ripgrep (rg) not found" >&2
+  exit 1
+fi
+
 joined="$(IFS='|'; echo "${patterns[*]}")"
 hits="$(rg -in --glob '!.git/**' --glob '!dist/**' --glob '!**/node_modules/**' --glob '!**/.venv/**' -e "$joined" "$ROOT" || true)"
 if [[ -n "$hits" ]]; then
