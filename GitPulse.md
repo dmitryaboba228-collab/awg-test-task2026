@@ -30,3 +30,6 @@
 ## Решения
 
 - [ADR-стратегия](adr/ADR-01-strategy.md)
+- [ADR-реестр репозиториев](adr/ADR-02-repo-registry.md)
+- [ADR-метрики и фильтр](adr/ADR-03-metrics-and-filter.md)
+- [ADR-деплой](adr/ADR-04-deploy.md) (критерий 4 открыт — ждёт живого URL)
