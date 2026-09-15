@@ -333,6 +333,22 @@
               "title": "Limit Commits",
               "type": "integer"
             }
+          },
+          {
+            "in": "query",
+            "name": "author",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Author"
+            }
           }
         ],
         "responses": {
@@ -452,6 +468,22 @@
               "minimum": 0,
               "title": "Skip",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "author",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Author"
             }
           }
         ],

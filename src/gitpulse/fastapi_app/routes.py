@@ -14,7 +14,7 @@ from gitpulse.core.models import (
     Commit,
     RepoSummary,
 )
-from gitpulse.git.errors import GitPulseError, UnknownRefError
+from gitpulse.git.errors import GitPulseError, UnknownAuthorError, UnknownRefError
 from gitpulse.git.repository import GitRepository
 
 
@@ -44,10 +44,11 @@ def build_api_router(repository: GitRepository, *, api_prefix: str = '/api/v1') 
         branch: str = Query(..., min_length=1),
         limit: int = Query(default=50, ge=1, le=200),
         skip: int = Query(default=0, ge=0),
+        author: str | None = None,
     ) -> list[Commit]:
         try:
-            return repository.list_commits(branch, limit=limit, skip=skip)
-        except UnknownRefError as exc:
+            return repository.list_commits(branch, limit=limit, skip=skip, author=author)
+        except (UnknownRefError, UnknownAuthorError) as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except GitPulseError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -75,10 +76,13 @@ def build_api_router(repository: GitRepository, *, api_prefix: str = '/api/v1') 
     def activity(
         branch: str | None = None,
         limit_commits: int = Query(default=500, ge=1, le=2000),
+        author: str | None = None,
     ) -> list[ActivityBucket]:
         try:
-            return activity_by_week(repository, branch=branch, limit_commits=limit_commits)
-        except UnknownRefError as exc:
+            return activity_by_week(
+                repository, branch=branch, limit_commits=limit_commits, author=author
+            )
+        except (UnknownRefError, UnknownAuthorError) as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except GitPulseError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
