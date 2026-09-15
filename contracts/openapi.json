@@ -179,6 +179,50 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "RepoCreate": {
+        "description": "Request body for `POST /repos`.",
+        "properties": {
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "title": "RepoCreate",
+        "type": "object"
+      },
+      "RepoInfo": {
+        "description": "Repository registered in a workspace, identified by clone directory.",
+        "properties": {
+          "cloned_at": {
+            "format": "date-time",
+            "title": "Cloned At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "path",
+          "cloned_at"
+        ],
+        "title": "RepoInfo",
+        "type": "object"
+      },
       "RepoSummary": {
         "description": "Repository header shown in the UI.",
         "properties": {
@@ -333,6 +377,22 @@
               "title": "Limit Commits",
               "type": "integer"
             }
+          },
+          {
+            "in": "query",
+            "name": "repo",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Repo"
+            }
           }
         ],
         "responses": {
@@ -370,6 +430,24 @@
     "/git/api/v1/authors": {
       "get": {
         "operationId": "authors_git_api_v1_authors_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "repo",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Repo"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -384,6 +462,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Authors",
@@ -395,6 +483,24 @@
     "/git/api/v1/branches": {
       "get": {
         "operationId": "branches_git_api_v1_branches_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "repo",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Repo"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -409,6 +515,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Branches",
@@ -452,6 +568,22 @@
               "minimum": 0,
               "title": "Skip",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "repo",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Repo"
             }
           }
         ],
@@ -518,6 +650,22 @@
               "title": "Limit Commits",
               "type": "integer"
             }
+          },
+          {
+            "in": "query",
+            "name": "repo",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Repo"
+            }
           }
         ],
         "responses": {
@@ -577,9 +725,91 @@
         ]
       }
     },
+    "/git/api/v1/repos": {
+      "get": {
+        "operationId": "list_repos_git_api_v1_repos_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RepoInfo"
+                  },
+                  "title": "Response List Repos Git Api V1 Repos Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Repos",
+        "tags": [
+          "gitpulse"
+        ]
+      },
+      "post": {
+        "operationId": "add_repo_git_api_v1_repos_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RepoCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepoInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Repo",
+        "tags": [
+          "gitpulse"
+        ]
+      }
+    },
     "/git/api/v1/summary": {
       "get": {
         "operationId": "summary_git_api_v1_summary_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "repo",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Repo"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -590,6 +820,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Summary",
