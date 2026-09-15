@@ -5,7 +5,7 @@ import { App } from './App'
 describe('App', () => {
   it('shows loading state', () => {
     render(<App />)
-    expect(screen.getByText(/Loading repository/i)).toBeTruthy()
+    expect(screen.getByText(/Loading/i)).toBeTruthy()
   })
 })
 
@@ -73,6 +73,16 @@ function jsonResponse(body: unknown): Response {
   return { ok: true, status: 200, json: async () => body } as Response
 }
 
+/** `getByTitle` only matches a `<title>` that is a direct child of `<svg>`
+ * (the chart's own title), not one nested in a bar's `<rect>` — so per-bar
+ * tooltips need a plain content match instead. */
+function getByBarTooltip(text: string): SVGTitleElement {
+  const match = screen.getByText(
+    (_, element) => element?.tagName.toLowerCase() === 'title' && element.textContent === text,
+  )
+  return match as unknown as SVGTitleElement
+}
+
 describe('App author filter', () => {
   beforeEach(() => {
     vi.stubGlobal(
@@ -80,6 +90,9 @@ describe('App author filter', () => {
       vi.fn((input: RequestInfo | URL) => {
         const url = String(input)
         const filteredByAda = url.includes('author=ada%40example.com')
+        // Single repo_path mode: no connected workspace repos, every other
+        // call omits `repo` and resolves against the host's fixed repo.
+        if (url.includes('/repos')) return Promise.resolve(jsonResponse([]))
         if (url.includes('/summary')) return Promise.resolve(jsonResponse(summary))
         if (url.includes('/branches')) return Promise.resolve(jsonResponse(branches))
         if (url.includes('/authors')) return Promise.resolve(jsonResponse(authors))
@@ -103,14 +116,14 @@ describe('App author filter', () => {
     render(<App />)
 
     await waitFor(() => expect(screen.getByText('feat: two')).toBeTruthy())
-    expect(screen.getByText('2024-W01').nextSibling?.textContent).toBe('2')
+    await waitFor(() => expect(getByBarTooltip('2024-W01: 2 commits')).toBeTruthy())
 
     const authorSelect = screen.getByLabelText('Author') as HTMLSelectElement
     fireEvent.change(authorSelect, { target: { value: 'ada@example.com' } })
 
     await waitFor(() => expect(screen.queryByText('feat: two')).toBeNull())
     expect(screen.getByText('feat: one')).toBeTruthy()
-    expect(screen.getByText('2024-W01').nextSibling?.textContent).toBe('1')
+    await waitFor(() => expect(getByBarTooltip('2024-W01: 1 commit')).toBeTruthy())
   })
 
   it('highlights the selected author in the contribution share list', async () => {
@@ -120,10 +133,36 @@ describe('App author filter', () => {
     const authorSelect = screen.getByLabelText('Author') as HTMLSelectElement
     fireEvent.change(authorSelect, { target: { value: 'bob@example.com' } })
 
-    const contributionsPanel = screen.getByText('Contribution share').closest('div') as HTMLElement
+    const contributionsPanel = screen
+      .getByRole('heading', { name: 'Contribution share' })
+      .closest('div') as HTMLElement
     await waitFor(() => {
       const row = within(contributionsPanel).getByText('Bob B.').closest('li')
       expect(row?.className).toContain('active')
     })
+  })
+
+  it('connects a new repository through the form', async () => {
+    const fetchMock = vi.mocked(fetch)
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('feat: two')).toBeTruthy())
+
+    fetchMock.mockImplementationOnce(() =>
+      Promise.resolve(
+        jsonResponse({
+          id: 'demo-repo',
+          url: 'https://example.com/demo.git',
+          path: '/workspace/demo-repo',
+          cloned_at: '2024-01-01T00:00:00Z',
+        }),
+      ),
+    )
+
+    const input = screen.getByPlaceholderText('https://github.com/owner/name.git')
+    fireEvent.change(input, { target: { value: 'https://example.com/demo.git' } })
+    const form = input.closest('form') as HTMLFormElement
+    fireEvent.submit(form)
+
+    await waitFor(() => expect(screen.getByText('https://example.com/demo.git')).toBeTruthy())
   })
 })

@@ -59,16 +59,22 @@ def activity_by_week(
     repo: GitRepository,
     *,
     branch: str | None = None,
-    limit_commits: int = 500,
     author: str | None = None,
 ) -> list[ActivityBucket]:
-    """Bucket recent commits by ISO week."""
+    """Bucket commits by ISO week over the whole history (not a recent window).
+
+    Uses `GitRepository.list_commit_dates`, which reads only commit dates,
+    so the trend does not silently drop older activity the way a capped
+    `list_commits` walk would. The `run_git` output-size limit (8 MiB by
+    default) still applies and surfaces as a clear `GitCommandError` if a
+    repository's history is too large even for dates alone.
+    """
 
     head = repo.summary().head or 'main'
     ref = branch or head
     buckets: dict[str, int] = defaultdict(int)
-    for commit in repo.list_commits(ref, limit=limit_commits, author=author):
-        week = _iso_week(commit.authored_at)
+    for authored_at in repo.list_commit_dates(ref, author=author):
+        week = _iso_week(authored_at)
         buckets[week] += 1
     return [
         ActivityBucket(period=period, commits=count) for period, count in sorted(buckets.items())
