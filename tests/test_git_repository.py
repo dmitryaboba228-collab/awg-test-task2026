@@ -36,6 +36,14 @@ def test_summary(sample_repo: Path) -> None:
     assert summary.author_count == 1
 
 
+def test_summary_spans_first_to_last_commit(dated_repo: Path) -> None:
+    summary = GitRepository(dated_repo).summary()
+    assert summary.first_commit_at is not None
+    assert summary.last_commit_at is not None
+    assert summary.first_commit_at.year == 2015
+    assert summary.last_commit_at.year == 2024
+
+
 def test_contributions_share(sample_repo: Path) -> None:
     repo = GitRepository(sample_repo)
     rows = author_contributions(repo)
