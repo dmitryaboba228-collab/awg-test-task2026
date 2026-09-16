@@ -4,9 +4,9 @@ name: Deploy
 # там стек docker compose. Сборка не выполняется на сервере: ему нужен
 # только Docker.
 
+# Запускается только вручную: деплой не должен происходить сам по себе,
+# по пушу в ветку.
 on:
-  push:
-    branches: [chore/cd-pipeline]
   workflow_dispatch:
 
 concurrency:
