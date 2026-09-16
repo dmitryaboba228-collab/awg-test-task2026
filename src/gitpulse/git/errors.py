@@ -15,3 +15,7 @@ class GitCommandError(GitPulseError):
 
 class UnknownRefError(GitPulseError):
     """Requested branch or ref does not exist."""
+
+
+class UnknownAuthorError(GitPulseError):
+    """Requested author email does not match any known author."""

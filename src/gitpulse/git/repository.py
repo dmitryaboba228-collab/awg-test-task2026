@@ -8,7 +8,7 @@ from pathlib import Path
 
 from gitpulse.core.models import Author, BranchRef, Commit, RepoSummary
 from gitpulse.git import resolve_repo, run_git
-from gitpulse.git.errors import UnknownRefError
+from gitpulse.git.errors import UnknownAuthorError, UnknownRefError
 
 
 def _parse_iso(value: str) -> datetime | None:
@@ -55,28 +55,43 @@ class GitRepository:
                 return branch.name
         raise UnknownRefError(f'unknown branch: {name}')
 
+    def ensure_author(self, email: str) -> str:
+        """Return the verified canonical (mailmap-resolved) author email or raise."""
+
+        for author in self.list_authors():
+            if author.email == email:
+                return author.email
+        raise UnknownAuthorError(f'unknown author: {email}')
+
     def list_commits(
         self,
         branch: str,
         *,
         limit: int = 50,
         skip: int = 0,
+        author: str | None = None,
     ) -> list[Commit]:
         ref = self.ensure_branch(branch)
         limit = max(1, min(limit, 200))
         skip = max(0, skip)
         fmt = '%H%x09%h%x09%aN%x09%aE%x09%aI%x09%s'
-        out = self._run(
-            [
-                'log',
-                '--use-mailmap',
-                '--no-merges',
-                f'--pretty=format:{fmt}',
-                f'-n{limit}',
-                f'--skip={skip}',
-                ref,
-            ]
-        )
+        args = [
+            'log',
+            '--use-mailmap',
+            '--no-merges',
+            f'--pretty=format:{fmt}',
+            f'-n{limit}',
+            f'--skip={skip}',
+        ]
+        if author is not None:
+            # --use-mailmap makes git resolve --author against the canonical
+            # identity too, so matching the email list_authors() already
+            # returns is enough. Angle brackets keep the match exact: a bare
+            # email would also match it as a substring of an unrelated one.
+            canonical_email = self.ensure_author(author)
+            args += ['-F', f'--author=<{canonical_email}>']
+        args.append(ref)
+        out = self._run(args)
         commits: list[Commit] = []
         for line in out.splitlines():
             if not line.strip():
@@ -100,29 +115,23 @@ class GitRepository:
         return commits
 
     def list_authors(self) -> list[Author]:
-        fmt = '%aN%x09%aE'
-        out = self._run(
-            [
-                'log',
-                '--use-mailmap',
-                '--no-merges',
-                f'--pretty=format:{fmt}',
-                'HEAD',
-            ]
-        )
-        counts: dict[tuple[str, str], int] = {}
+        # `shortlog` already aggregates and applies mailmap, so the output
+        # stays small even on a repository with a huge commit history —
+        # unlike `git log` over the full history, it cannot exceed the
+        # output size limit. The revision must be explicit: in a bare
+        # repository, `shortlog` with no revision silently returns nothing.
+        out = self._run(['shortlog', '-sne', '--no-merges', 'HEAD'])
+        authors: list[Author] = []
         for line in out.splitlines():
-            text = line.strip()
-            if not text:
+            if not line.strip():
                 continue
-            parts = text.split('\t', 1)
-            if len(parts) != 2:
+            count_text, sep, rest = line.partition('\t')
+            if not sep or not count_text.strip().isdigit():
                 continue
-            key = (parts[0], parts[1])
-            counts[key] = counts.get(key, 0) + 1
-        authors = [
-            Author(name=name, email=email, commits=count) for (name, email), count in counts.items()
-        ]
+            name, sep, email = rest.rpartition(' <')
+            if not sep or not email.endswith('>'):
+                continue
+            authors.append(Author(name=name, email=email[:-1], commits=int(count_text.strip())))
         return sorted(authors, key=lambda a: (-a.commits, a.name.lower()))
 
     def summary(self) -> RepoSummary:

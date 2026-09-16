@@ -380,6 +380,22 @@
           },
           {
             "in": "query",
+            "name": "author",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Author"
+            }
+          },
+          {
+            "in": "query",
             "name": "repo",
             "required": false,
             "schema": {
@@ -568,6 +584,22 @@
               "minimum": 0,
               "title": "Skip",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "author",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Author"
             }
           },
           {
