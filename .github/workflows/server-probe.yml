@@ -14,18 +14,21 @@ jobs:
       HOST: ${{ secrets.DEPLOY_HOST }}
     steps:
       - name: Runner egress IP
-        run: curl -s https://ifconfig.me; echo
+        run: |
+          curl -s https://ifconfig.me
+          echo
 
       - name: ICMP
-        run: ping -c 3 -W 3 "$HOST" || echo 'ICMP: FAIL'
+        run: |
+          ping -c 3 -W 3 "$HOST" || echo "ICMP FAILED"
 
       - name: TCP ports
         run: |
           for p in 22 80 443; do
             if nc -zv -w 8 "$HOST" "$p" 2>&1; then
-              echo "port $p: OPEN"
+              echo "port $p OPEN"
             else
-              echo "port $p: BLOCKED"
+              echo "port $p BLOCKED"
             fi
           done
 
