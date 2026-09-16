@@ -368,18 +368,6 @@
           },
           {
             "in": "query",
-            "name": "limit_commits",
-            "required": false,
-            "schema": {
-              "default": 500,
-              "maximum": 2000,
-              "minimum": 1,
-              "title": "Limit Commits",
-              "type": "integer"
-            }
-          },
-          {
-            "in": "query",
             "name": "author",
             "required": false,
             "schema": {

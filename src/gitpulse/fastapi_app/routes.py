@@ -126,14 +126,11 @@ def build_api_router(
     @router.get('/activity', response_model=list[ActivityBucket])
     def activity(
         branch: str | None = None,
-        limit_commits: int = Query(default=500, ge=1, le=2000),
         author: str | None = None,
         repo: str | None = None,
     ) -> list[ActivityBucket]:
         try:
-            return activity_by_week(
-                _repo_for(repo), branch=branch, limit_commits=limit_commits, author=author
-            )
+            return activity_by_week(_repo_for(repo), branch=branch, author=author)
         except (UnknownRefError, UnknownAuthorError) as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except GitPulseError as exc:

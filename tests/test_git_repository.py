@@ -94,6 +94,14 @@ def test_list_commits_unknown_author_raises(two_author_repo: Path) -> None:
         repo.list_commits('main', author='nope@example.com')
 
 
+def test_list_commit_dates_covers_all_non_merge_commits(sample_repo: Path) -> None:
+    """Backs the activity trend: dates only, not capped like list_commits."""
+
+    repo = GitRepository(sample_repo)
+    dates = repo.list_commit_dates('main')
+    assert len(dates) == 2
+
+
 def test_activity_by_week_filters_by_author(two_author_repo: Path) -> None:
     repo = GitRepository(two_author_repo)
     all_weeks = activity_by_week(repo)

@@ -114,6 +114,32 @@ class GitRepository:
             )
         return commits
 
+    def list_commit_dates(self, branch: str, *, author: str | None = None) -> list[datetime]:
+        """Return authored-at timestamps for every non-merge commit on branch.
+
+        Dates only (`%aI`), no other fields — unlike `list_commits`, this is
+        not paged, so activity trends can cover the whole history instead of
+        a bounded window. The `run_git` output-size limit still applies and
+        raises `GitCommandError` if even the dates alone are too large.
+        """
+
+        ref = self.ensure_branch(branch)
+        args = ['log', '--use-mailmap', '--no-merges', '--format=%aI']
+        if author is not None:
+            canonical_email = self.ensure_author(author)
+            args += ['-F', f'--author=<{canonical_email}>']
+        args.append(ref)
+        out = self._run(args)
+        dates: list[datetime] = []
+        for line in out.splitlines():
+            text = line.strip()
+            if not text:
+                continue
+            parsed = _parse_iso(text)
+            if parsed is not None:
+                dates.append(parsed)
+        return dates
+
     def list_authors(self) -> list[Author]:
         # `shortlog` already aggregates and applies mailmap, so the output
         # stays small even on a repository with a huge commit history —
