@@ -132,9 +132,13 @@ Environment variables:
 | `GITPULSE_REPO_PATH` | Also serve one fixed local repository alongside the registry | unset |
 | `PORT` | Port `uvicorn` binds to | `8000` |
 
-**Live deployment:** _not yet public — hosting, credentials, and the deploy
-target are [@mazazyrikbeats](https://t.me/mazazyrikbeats)'s / the
-maintainer's call, per [AGENTS.md](AGENTS.md#human-responsibilities-do-not-silently-take-over). URL goes here once deployed._
+**Live deployment:** <https://85-192-38-28.sslip.io/git/> — Django
+(~35k commits, ~3.6k authors) is connected there as the demo repository.
+The host name is a [sslip.io](https://sslip.io) address for the server's own
+IP, since no domain is owned yet; Caddy still holds a real Let's Encrypt
+certificate for it. Releases reach the host through the manually triggered
+`Deploy` workflow, which builds the wheel on the runner and ships it over
+`scp`, so the host needs nothing but Docker.
 
 **Limitations** (see `docs/vault/adr/ADR-01-strategy.md` and `ADR-03` for the
 full reasoning):
