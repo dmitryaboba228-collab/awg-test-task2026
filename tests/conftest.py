@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import subprocess
 from pathlib import Path
 
@@ -43,6 +44,36 @@ def sample_repo(tmp_path: Path) -> Path:
     _git(repo, 'add', 'note.txt')
     _git(repo, 'commit', '-m', 'feat: note')
     _git(repo, 'checkout', 'main')
+    return repo
+
+
+@pytest.fixture()
+def dated_repo(tmp_path: Path) -> Path:
+    """Repository whose commits are years apart, to pin down the date range."""
+
+    repo = tmp_path / 'dated'
+    repo.mkdir()
+    _git(repo, 'init', '-b', 'main')
+    _git(repo, 'config', 'user.name', 'Ada Lovelace')
+    _git(repo, 'config', 'user.email', 'ada@example.com')
+    for index, stamp in enumerate(('2015-01-02T03:04:05+00:00', '2024-06-07T08:09:10+00:00')):
+        (repo / 'README.md').write_text(f'line {index}\n', encoding='utf-8')
+        _git(repo, 'add', 'README.md')
+        subprocess.run(
+            [
+                'git',
+                '-c',
+                'core.hooksPath=/dev/null',
+                '-C',
+                str(repo),
+                'commit',
+                '-m',
+                f'feat: change {index}',
+            ],
+            check=True,
+            capture_output=True,
+            env={**os.environ, 'GIT_AUTHOR_DATE': stamp, 'GIT_COMMITTER_DATE': stamp},
+        )
     return repo
 
 

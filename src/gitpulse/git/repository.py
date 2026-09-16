@@ -167,11 +167,13 @@ class GitRepository:
         first_at = None
         last_at = None
         if commit_count:
-            first_raw = self._run(
-                ['log', '--reverse', '--pretty=format:%aI', '-n1', 'HEAD']
-            ).strip()
+            # `git log --reverse -n1` limits before reversing, so it returns the
+            # newest commit. Root commits are what actually start the history,
+            # and a repository can have more than one of them.
+            roots_raw = self._run(['log', '--max-parents=0', '--pretty=format:%aI', 'HEAD'])
+            root_dates = [d for d in map(_parse_iso, roots_raw.splitlines()) if d is not None]
+            first_at = min(root_dates, default=None)
             last_raw = self._run(['log', '--pretty=format:%aI', '-n1', 'HEAD']).strip()
-            first_at = _parse_iso(first_raw)
             last_at = _parse_iso(last_raw)
         branches = self.list_branches()
         authors = self.list_authors()
