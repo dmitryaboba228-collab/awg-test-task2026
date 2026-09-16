@@ -37,6 +37,12 @@ def run_git(
         'git',
         '-c',
         'core.hooksPath=/dev/null',
+        '-c',
+        'credential.helper=',
+        '-c',
+        'protocol.allow=never',
+        '-c',
+        'protocol.https.allow=always',
         '-C',
         str(repo),
         *args,
@@ -44,6 +50,7 @@ def run_git(
     env = {
         **os.environ,
         'GIT_OPTIONAL_LOCKS': '1',
+        'GIT_TERMINAL_PROMPT': '0',
         'LC_ALL': 'C.UTF-8',
         'LANG': 'C.UTF-8',
     }
