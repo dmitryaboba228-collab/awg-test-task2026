@@ -1,0 +1,95 @@
+name: Deploy
+
+# Собирает wheel на раннере, доставляет его на сервер по scp и поднимает
+# там стек docker compose. Сборка не выполняется на сервере: ему нужен
+# только Docker.
+
+# Запускается только вручную: деплой не должен происходить сам по себе,
+# по пушу в ветку.
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      HOST: ${{ secrets.DEPLOY_HOST }}
+      DOMAIN: ${{ secrets.DEPLOY_DOMAIN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Poetry
+        run: pipx install poetry
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: make install
+
+      - name: Build wheel
+        run: |
+          make package
+          ls -la dist/
+
+      - name: Prepare SSH key
+        env:
+          KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+      - name: Upload bundle
+        run: |
+          tar czf bundle.tar.gz dist deploy
+          scp -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no \
+            -o UserKnownHostsFile=/dev/null -o ConnectTimeout=20 \
+            bundle.tar.gz "root@$HOST:/tmp/bundle.tar.gz"
+
+      - name: Ensure Docker on server
+        run: |
+          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes -o StrictHostKeyChecking=no \
+            -o UserKnownHostsFile=/dev/null -o ConnectTimeout=20 "root@$HOST" \
+            "command -v docker >/dev/null 2>&1 || curl -fsSL https://get.docker.com | sh; docker --version; docker compose version"
+
+      - name: Deploy stack
+        run: |
+          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes -o StrictHostKeyChecking=no \
+            -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30 "root@$HOST" \
+            "set -e
+             mkdir -p /opt/gitpulse
+             cd /opt/gitpulse
+             rm -rf dist deploy
+             tar xzf /tmp/bundle.tar.gz
+             export GITPULSE_DOMAIN='$DOMAIN'
+             docker compose -f deploy/docker-compose.yml up -d --build
+             docker compose -f deploy/docker-compose.yml ps"
+
+      - name: Wait for public endpoint
+        run: |
+          for i in $(seq 1 40); do
+            if curl -fsS --max-time 10 "https://$DOMAIN/health"; then
+              echo
+              echo "живой URL: https://$DOMAIN/git/"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo 'эндпоинт не ответил, логи:'
+          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes -o StrictHostKeyChecking=no \
+            -o UserKnownHostsFile=/dev/null "root@$HOST" \
+            'cd /opt/gitpulse && docker compose -f deploy/docker-compose.yml logs --tail 40'
+          exit 1
