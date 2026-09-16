@@ -44,7 +44,7 @@ def create_app(
 ) -> FastAPI:
     """Convenience FastAPI app used by the fixture host and demos."""
 
-    app = FastAPI(title='AWG GitPulse', version='0.1.0')
+    app = FastAPI(title='AWG GitPulse', version='0.2.0')
     router = create_router(
         mount_path=mount_path,
         api_prefix=api_prefix,

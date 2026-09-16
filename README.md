@@ -78,6 +78,84 @@ make package
 # see examples/host-vendor for vendoring the wheel into a host app
 ```
 
+## Deployment
+
+`deploy/` holds the production host: `deploy/app.py` mounts `gitpulse` in
+workspace mode (ADR-02), so the UI's "Connect a repository" form can clone
+any public `https://` URL at runtime — no restart, no fixed local checkout.
+`deploy/Dockerfile` installs a pre-built wheel; it does not build the
+package, mirroring `examples/host-vendor`.
+
+**With a public HTTPS endpoint** (the real deployment target — see
+[deploy/README.md](deploy/README.md) for the full runbook):
+
+```bash
+export GITPULSE_DOMAIN=<public hostname>   # e.g. a sslip.io address for
+                                            # the server's own IP if there
+                                            # is no owned domain yet
+deploy/run.sh
+```
+
+This brings up `gitpulse` behind `caddy` (`deploy/docker-compose.yml`),
+which terminates TLS with a certificate it obtains and renews itself and
+reverse-proxies everything else to the app — no manual certbot step.
+Verified locally end to end (build, both containers healthy, UI and API
+reachable through the proxy, HTTP redirected to HTTPS) using Caddy's
+internal certificate authority in place of a real one, since issuing a real
+Let's Encrypt certificate needs the domain to actually resolve to a
+publicly reachable server.
+
+**Single container, no TLS** (quick local/manual testing):
+
+```bash
+make package                                          # dist/*.whl
+docker build -f deploy/Dockerfile -t gitpulse .
+docker run -p 8000:8000 -v gitpulse-workspace:/data/workspace gitpulse
+# UI  http://127.0.0.1:8000/git/
+# API http://127.0.0.1:8000/git/api/v1/health
+```
+
+`make package-verify` installs the wheel into an isolated venv and mounts it
+in both `repo_path` and `workspace` mode against a throwaway repo — run it
+before building either image.
+
+Without Docker, `deploy/app.py` runs the same way as
+`examples/host-vendor/app.py`: `pip install dist/*.whl`, then
+`GITPULSE_WORKSPACE=/path/to/workspace uvicorn app:app --port 8000` from
+inside `deploy/`.
+
+Environment variables:
+
+| Variable | Meaning | Default |
+|----------|---------|---------|
+| `GITPULSE_WORKSPACE` | Directory clones live in (workspace/registry mode) | `/data/workspace` |
+| `GITPULSE_REPO_PATH` | Also serve one fixed local repository alongside the registry | unset |
+| `PORT` | Port `uvicorn` binds to | `8000` |
+
+**Live deployment:** _not yet public — hosting, credentials, and the deploy
+target are [@mazazyrikbeats](https://t.me/mazazyrikbeats)'s / the
+maintainer's call, per [AGENTS.md](AGENTS.md#human-responsibilities-do-not-silently-take-over). URL goes here once deployed._
+
+**Limitations** (see `docs/vault/adr/ADR-01-strategy.md` and `ADR-03` for the
+full reasoning):
+
+- Only public `https://` repositories can be connected — no credentials are
+  ever accepted or forwarded, so private and non-existent repos fail fast
+  instead of hanging.
+- Disk grows with every connected repository: each clone is capped at 2 GiB
+  by default, but nothing currently reclaims space, and many mid-sized repos
+  can still fill the volume.
+- Cloning is blobless (`--filter=blob:none`), so the first request against a
+  freshly connected large repository is slower while git lazily fetches the
+  objects that request needs (a `.mailmap`, if present, is prefetched once
+  right after cloning).
+- Contribution share counts non-merge commits per author, not lines changed
+  — a one-line fix and a thousand-line refactor count the same.
+- The weekly activity trend covers the whole history, not a recent window;
+  a repository whose non-merge commit dates alone exceed the git
+  output-size limit will report a clear error instead of a silently
+  truncated trend.
+
 ## Gitflow
 
 - Feature branches from `origin/dev`
